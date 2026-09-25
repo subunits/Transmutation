@@ -479,13 +479,27 @@ function renderHolo(canvas, intensity, H, cmap, brightness, gamma) {
 // ASCII
 // ─────────────────────────────────────────────────────────────────────────────
 const RAMP = ' .:-=+*#%@';
+// Cached char dimensions, measured once after first render
+let _charW = 0, _charH = 0;
+function measureChar() {
+  const el = document.getElementById('ascii-out');
+  const probe = document.createElement('span');
+  probe.textContent = '@';
+  probe.style.cssText = 'position:absolute;visibility:hidden;white-space:pre;font-family:inherit;font-size:inherit;line-height:inherit;';
+  el.appendChild(probe);
+  _charW = probe.offsetWidth  || 6.5;
+  _charH = probe.offsetHeight || 6.8;
+  el.removeChild(probe);
+}
 function buildASCII(intensity, H) {
   const el = document.getElementById('ascii-out');
-  // Measure how many chars fit in the container
-  // Use a temp span to get character dimensions
-  let charW = 6.5, charH = 6.5 * 1.05; // fallback: font-size * line-height
-  const cols = Math.max(32, Math.floor((el.clientWidth  - 16) / charW)); // -16 for padding
-  const rows = Math.max(16, Math.floor((el.clientHeight - 16) / charH));
+  // Measure char size once (or if not yet measured)
+  if (!_charW) measureChar();
+  const pad = 16;
+  const w = el.offsetWidth  || el.clientWidth  || 300;
+  const h = el.offsetHeight || el.clientHeight || 160;
+  const cols = Math.max(16, Math.floor((w - pad) / _charW));
+  const rows = Math.max(8,  Math.floor((h - pad) / _charH));
   let out = '';
   for (let row = 0; row < rows; row++) {
     const sy = Math.min(H-1, Math.floor(row / rows * H));
@@ -642,7 +656,11 @@ document.querySelectorAll('.seg').forEach(seg => {
       } else if (seg.id==='anim-seg') {
         btn.dataset.v==='1' ? (STATE && startAnim()) : stopAnim();
       } else if (seg.id==='ascii-seg') {
-        if (STATE) { STATE.showASCII = btn.dataset.v==='1'; if (!animPlaying) draw(animFrame); }
+        if (STATE) {
+          STATE.showASCII = btn.dataset.v==='1';
+          if (STATE.showASCII) { _charW = 0; draw._asciiTick = 0; } // force re-measure
+          if (!animPlaying) draw(animFrame);
+        }
       }
     });
   });
