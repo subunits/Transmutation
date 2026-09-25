@@ -39,10 +39,11 @@
 
   /* ── Output panels ── */
   #output-section { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); border-bottom: 1px solid var(--border); }
-  .panel { background: var(--bg2); display: flex; flex-direction: column; }
-  .panel-label { font-size: 10px; color: var(--muted); padding: 8px 12px 6px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; }
+  .panel { background: var(--bg2); display: flex; flex-direction: column; height: 300px; }
+  .panel-label { font-size: 10px; color: var(--muted); padding: 8px 12px 6px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; flex-shrink: 0; }
   .panel-label .tag { color: var(--accent2); }
-  canvas { display: block; width: 100%; height: auto; image-rendering: pixelated; }
+  .canvas-wrap { position: relative; flex: 1; overflow: hidden; }
+  .canvas-wrap canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; image-rendering: pixelated; }
 
   /* ── Controls ── */
   #controls { background: var(--bg3); border-top: 1px solid var(--border); padding: 14px 0; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1px; background-color: var(--border); }
@@ -105,14 +106,14 @@
           <span>CA evolution</span>
           <span class="tag" id="ca-rule-tag">rule —</span>
         </div>
-        <canvas id="ca-canvas" width="256" height="128"></canvas>
+        <div class="canvas-wrap"><canvas id="ca-canvas" width="256" height="128"></canvas></div>
       </div>
       <div class="panel">
         <div class="panel-label">
           <span>holographic interference</span>
           <span class="tag" id="holo-tag">128×128</span>
         </div>
-        <canvas id="holo-canvas" width="128" height="128"></canvas>
+        <div class="canvas-wrap"><canvas id="holo-canvas" width="128" height="128"></canvas></div>
       </div>
     </div>
 
