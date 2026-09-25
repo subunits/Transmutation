@@ -433,17 +433,19 @@ function renderCA(canvas, grid, W, G, cmap, brightness, gamma, tOff) {
   const img=ctx.createImageData(cw,ch);
   const d=img.data;
   for (let py=0;py<ch;py++) {
-    const srcRow = (((((py/ch*G)|0) + (tOff|0)) % G) + G) % G;
+    // Map canvas row → CA generation, scrolled by tOff
+    const srcRow = (((Math.floor(py/ch*G) + (tOff|0)) % G) + G) % G;
     const fade   = 0.35 + 0.65*(py/ch);
     for (let px=0;px<cw;px++) {
-      const raw = grid[srcRow*W + ((px/cw*W)|0)] / 255.0 * brightness * fade;
+      // Stretch CA width across full canvas — no tiling
+      const srcCol = Math.min(W-1, Math.floor(px/cw*W));
+      const raw = grid[srcRow*W + srcCol] / 255.0 * brightness * fade;
       const t   = Math.min(1, Math.pow(Math.max(0,raw), 1/gamma));
       const [r,g,b] = cmap(t);
       const i=(py*cw+px)*4; d[i]=r;d[i+1]=g;d[i+2]=b;d[i+3]=255;
     }
   }
   ctx.putImageData(img,0,0);
-  // "now" scanline
   ctx.strokeStyle='rgba(62,207,207,0.5)';
   ctx.lineWidth=1;
   ctx.beginPath(); ctx.moveTo(0,ch-1); ctx.lineTo(cw,ch-1); ctx.stroke();
@@ -457,9 +459,12 @@ function renderHolo(canvas, intensity, H, cmap, brightness, gamma) {
   const d=img.data;
   let peak=0;
   for (let py=0;py<ch;py++) {
-    const sy=(py/ch*H)|0;
+    // Stretch hologram rows across canvas height — no tiling
+    const sy = Math.min(H-1, Math.floor(py/ch*H));
     for (let px=0;px<cw;px++) {
-      const v = intensity[sy*H + ((px/cw*H)|0)] * brightness;
+      // Stretch hologram cols across canvas width — no tiling
+      const sx = Math.min(H-1, Math.floor(px/cw*H));
+      const v = intensity[sy*H + sx] * brightness;
       const t = Math.min(1, Math.pow(Math.max(0,v), 1/gamma));
       if (t>peak) peak=t;
       const [r,g,b]=cmap(t);
@@ -658,9 +663,14 @@ document.getElementById('run-btn').addEventListener('click', run);
   });
 });
 
-// Boot
+// Boot — run pipeline then start animation immediately
+animPlaying = false; // start false, startAnim() sets true
 run();
-setTimeout(() => startAnim(), 100);
+// First frame is drawn by run(). Now kick the loop.
+startAnim();
+// Sync the play button to active state
+document.querySelector('#anim-seg button[data-v="1"]').classList.add('active');
+document.querySelector('#anim-seg button[data-v="0"]').classList.remove('active');
 </script>
 </body>
 </html>
