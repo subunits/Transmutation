@@ -480,10 +480,20 @@ function renderHolo(canvas, intensity, H, cmap, brightness, gamma) {
 // ─────────────────────────────────────────────────────────────────────────────
 const RAMP = ' .:-=+*#%@';
 function buildASCII(intensity, H) {
-  let out='';
-  for (let y=0;y<H;y+=2) {
-    for (let x=0;x<H;x++) out+=RAMP[Math.min(9,Math.max(0,(intensity[y*H+x]*9)|0))];
-    out+='\n';
+  const el = document.getElementById('ascii-out');
+  // Measure how many chars fit in the container
+  // Use a temp span to get character dimensions
+  let charW = 6.5, charH = 6.5 * 1.05; // fallback: font-size * line-height
+  const cols = Math.max(32, Math.floor((el.clientWidth  - 16) / charW)); // -16 for padding
+  const rows = Math.max(16, Math.floor((el.clientHeight - 16) / charH));
+  let out = '';
+  for (let row = 0; row < rows; row++) {
+    const sy = Math.min(H-1, Math.floor(row / rows * H));
+    for (let col = 0; col < cols; col++) {
+      const sx = Math.min(H-1, Math.floor(col / cols * H));
+      out += RAMP[Math.min(9, Math.max(0, (intensity[sy*H + sx] * 9)|0))];
+    }
+    out += '\n';
   }
   return out;
 }
