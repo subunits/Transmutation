@@ -17,73 +17,129 @@
     --text-dim: #607888;
     --accent:   #3ecfcf;
     --accent2:  #1a8f8f;
-    --warm:     #e8a44a;
-    --danger:   #cf5c3e;
     --font:     'IBM Plex Mono', monospace;
   }
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); font-size: 13px; line-height: 1.5; }
+  html, body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 13px; line-height: 1.5; }
 
-  /* ── Layout ── */
-  #app { display: grid; grid-template-rows: auto 1fr auto; min-height: 100vh; max-width: 1100px; margin: 0 auto; padding: 0 16px; }
+  /* ── Page shell — simple flow, no nested grids fighting each other ── */
+  #app { max-width: 1100px; margin: 0 auto; padding: 0 16px; padding-bottom: env(safe-area-inset-bottom, 0px); }
 
-  header { border-bottom: 1px solid var(--border); padding: 18px 0 14px; display: flex; align-items: baseline; gap: 16px; }
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 14px 0 12px;
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  }
   header h1 { font-size: 15px; font-weight: 500; letter-spacing: .04em; color: var(--accent); }
   header .sub { font-size: 11px; color: var(--muted); }
-  header .stage-indicator { margin-left: auto; font-size: 11px; color: var(--muted); }
-  header .stage-indicator span { color: var(--accent); }
-  .dl-btn { font-family: var(--font); font-size: 11px; background: none; border: 1px solid var(--dim); color: var(--text-dim); padding: 4px 10px; cursor: pointer; transition: border-color .15s, color .15s; }
-  .dl-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .stage-pill { margin-left: auto; font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .stage-pill span { color: var(--accent); }
 
-  main { display: grid; grid-template-rows: 1fr auto; gap: 0; overflow: hidden; }
-
-  /* ── Output panels ── */
-  #output-section { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); border-bottom: 1px solid var(--border); }
-  .panel { background: var(--bg2); display: flex; flex-direction: column; height: 300px; }
-  .panel-label { font-size: 10px; color: var(--muted); padding: 8px 12px 6px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; flex-shrink: 0; }
+  /* ── Output panels — explicit height, side by side ── */
+  #output-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    margin: 12px 0;
+    /* Fixed height; canvases fill it via JS */
+    height: 320px;
+  }
+  .panel { background: var(--bg2); display: flex; flex-direction: column; min-height: 0; }
+  .panel-label {
+    font-size: 10px; color: var(--muted);
+    padding: 6px 10px 5px;
+    border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between;
+    flex-shrink: 0;
+  }
   .panel-label .tag { color: var(--accent2); }
-  .canvas-wrap { position: relative; flex: 1; overflow: hidden; }
-  .canvas-wrap canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; image-rendering: pixelated; }
+  /* Canvas fills remaining panel height — sized by JS resizeCanvases() */
+  .panel canvas { display: block; flex: 1; width: 100%; image-rendering: pixelated; }
+
+  /* ── ASCII output — always in flow, hidden until toggled ── */
+  #ascii-out {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 0;
+    font-size: 6.5px;
+    line-height: 1.05;
+    color: var(--accent2);
+    white-space: pre;
+    overflow: auto;
+    padding: 8px;
+    font-family: var(--font);
+    height: 160px;
+    margin-bottom: 12px;
+    display: none;
+    -webkit-overflow-scrolling: touch;
+  }
 
   /* ── Controls ── */
-  #controls { background: var(--bg3); border-top: 1px solid var(--border); padding: 14px 0; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1px; background-color: var(--border); }
-  .ctrl-group { background: var(--bg3); padding: 12px 16px; }
-  .ctrl-group h2 { font-size: 10px; font-weight: 500; color: var(--muted); margin-bottom: 10px; letter-spacing: .06em; }
+  #controls {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--border);
+    margin-bottom: 12px;
+  }
+  .ctrl-group { background: var(--bg3); padding: 12px 14px; }
+  .ctrl-group h2 { font-size: 10px; font-weight: 500; color: var(--muted); margin-bottom: 10px; letter-spacing: .06em; text-transform: uppercase; }
 
   .field { margin-bottom: 10px; }
   .field label { display: block; font-size: 11px; color: var(--text-dim); margin-bottom: 4px; }
-  .field input[type=range] { width: 100%; accent-color: var(--accent); cursor: pointer; height: 3px; }
-  .field .val { float: right; color: var(--accent); font-size: 11px; }
-  .field textarea { width: 100%; background: var(--bg); border: 1px solid var(--dim); color: var(--text); font-family: var(--font); font-size: 11px; padding: 6px 8px; resize: vertical; min-height: 72px; outline: none; }
+  .field input[type=range] { width: 100%; accent-color: var(--accent); cursor: pointer; }
+  .val { float: right; color: var(--accent); font-size: 11px; }
+  .field textarea {
+    width: 100%; background: var(--bg); border: 1px solid var(--dim);
+    color: var(--text); font-family: var(--font); font-size: 11px;
+    padding: 6px 8px; resize: vertical; min-height: 72px; outline: none;
+    -webkit-appearance: none;
+  }
   .field textarea:focus { border-color: var(--accent2); }
-  .field select { width: 100%; background: var(--bg); border: 1px solid var(--dim); color: var(--text); font-family: var(--font); font-size: 11px; padding: 5px 8px; outline: none; cursor: pointer; }
+  .field select {
+    width: 100%; background: var(--bg); border: 1px solid var(--dim);
+    color: var(--text); font-family: var(--font); font-size: 11px;
+    padding: 5px 8px; outline: none; cursor: pointer;
+    -webkit-appearance: none; appearance: none;
+  }
   .field select:focus { border-color: var(--accent2); }
 
   .seg { display: flex; }
-  .seg button { flex: 1; background: var(--bg); border: 1px solid var(--dim); color: var(--text-dim); font-family: var(--font); font-size: 11px; padding: 5px 0; cursor: pointer; transition: background .1s, color .1s; }
+  .seg button {
+    flex: 1; background: var(--bg); border: 1px solid var(--dim);
+    color: var(--text-dim); font-family: var(--font); font-size: 11px;
+    padding: 6px 0; cursor: pointer; transition: background .1s, color .1s;
+    -webkit-appearance: none;
+  }
   .seg button:not(:first-child) { border-left: none; }
   .seg button.active { background: var(--accent2); border-color: var(--accent2); color: #fff; }
 
-  .run-btn { width: 100%; background: var(--accent); border: none; color: #000; font-family: var(--font); font-size: 12px; font-weight: 500; padding: 9px; cursor: pointer; letter-spacing: .04em; margin-top: 8px; transition: background .15s; }
+  .run-btn {
+    width: 100%; background: var(--accent); border: none; color: #000;
+    font-family: var(--font); font-size: 12px; font-weight: 500;
+    padding: 10px; cursor: pointer; letter-spacing: .04em; margin-top: 8px;
+    transition: background .15s; -webkit-appearance: none;
+  }
   .run-btn:hover { background: var(--accent2); color: #fff; }
   .run-btn:active { background: #0a5f5f; }
 
-  /* ── Diagnostics footer ── */
-  footer { border-top: 1px solid var(--border); padding: 8px 0; display: flex; gap: 24px; flex-wrap: wrap; }
+  /* ── Colormap swatches ── */
+  .cmap-row { display: flex; gap: 4px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+  .cmap-row .sw { width: 20px; height: 12px; border: 1px solid var(--dim); cursor: pointer; }
+  .cmap-row .sw.active { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  /* ── Footer diagnostics ── */
+  footer { border-top: 1px solid var(--border); padding: 8px 0 16px; display: flex; gap: 16px; flex-wrap: wrap; }
   .diag { font-size: 10px; color: var(--muted); }
   .diag span { color: var(--text-dim); }
 
-  /* ── ASCII panel ── */
-  #ascii-out { background: var(--bg); border: 1px solid var(--border); font-size: 7px; line-height: 1.0; color: var(--accent2); white-space: pre; overflow: auto; padding: 8px; font-family: var(--font); max-height: 120px; display: none; }
-
-  /* colormap swatch row */
-  .cmap-row { display: flex; gap: 4px; align-items: center; margin-bottom: 10px; }
-  .cmap-row .sw { width: 18px; height: 10px; border: 1px solid var(--dim); cursor: pointer; transition: outline .1s; }
-  .cmap-row .sw.active { outline: 2px solid var(--accent); }
-
-  @media (max-width: 700px) {
-    #output-section { grid-template-columns: 1fr; }
+  /* ── Mobile / iPad ── */
+  @media (max-width: 768px) {
+    #output-section { grid-template-columns: 1fr; height: auto; }
+    .panel { height: 220px; }
     #controls { grid-template-columns: 1fr; }
+    #ascii-out { font-size: 5.5px; height: 130px; }
   }
 </style>
 </head>
@@ -93,508 +149,450 @@
   <header>
     <h1>TransmutationEngine</h1>
     <span class="sub">quaternion → CA → hologram</span>
-    <span class="stage-indicator">stage <span id="cur-stage">—</span></span>
-    <button class="dl-btn" id="dl-ca">↓ CA</button>
-    <button class="dl-btn" id="dl-holo">↓ hologram</button>
-    <button class="dl-btn" id="dl-html">↓ page</button>
+    <span class="stage-pill">stage <span id="cur-stage">—</span></span>
   </header>
 
-  <main>
-    <div id="output-section">
-      <div class="panel">
-        <div class="panel-label">
-          <span>CA evolution</span>
-          <span class="tag" id="ca-rule-tag">rule —</span>
-        </div>
-        <div class="canvas-wrap"><canvas id="ca-canvas" width="256" height="128"></canvas></div>
+  <div id="output-section">
+    <div class="panel">
+      <div class="panel-label">
+        <span>CA evolution</span>
+        <span class="tag" id="ca-rule-tag">rule —</span>
       </div>
-      <div class="panel">
-        <div class="panel-label">
-          <span>holographic interference</span>
-          <span class="tag" id="holo-tag">128×128</span>
-        </div>
-        <div class="canvas-wrap"><canvas id="holo-canvas" width="128" height="128"></canvas></div>
-      </div>
+      <canvas id="ca-canvas"></canvas>
     </div>
+    <div class="panel">
+      <div class="panel-label">
+        <span>holographic interference</span>
+        <span class="tag" id="holo-tag">—</span>
+      </div>
+      <canvas id="holo-canvas"></canvas>
+    </div>
+  </div>
 
-    <div id="controls">
-      <!-- Group 1: Input -->
-      <div class="ctrl-group">
-        <h2>input</h2>
-        <div class="field">
-          <label>mode</label>
-          <div class="seg" id="mode-seg">
-            <button class="active" data-mode="freq">freq/amp</button>
-            <button data-mode="midi">MIDI</button>
-          </div>
+  <div id="ascii-out"></div>
+
+  <div id="controls">
+    <!-- Group 1: Input -->
+    <div class="ctrl-group">
+      <h2>input</h2>
+      <div class="field">
+        <label>mode</label>
+        <div class="seg" id="mode-seg">
+          <button class="active" data-mode="freq">freq/amp</button>
+          <button data-mode="midi">MIDI</button>
         </div>
-        <div class="field" id="freq-input-wrap">
-          <label>freq, dur, amp <span style="color:var(--muted)">— one note per line</span></label>
-          <textarea id="freq-input" spellcheck="false">261.63,0.5,0.8
+      </div>
+      <div class="field" id="freq-input-wrap">
+        <label>freq, dur, amp — one note per line</label>
+        <textarea id="freq-input" spellcheck="false">261.63,0.5,0.8
 293.66,0.5,0.7
 329.63,0.5,0.9
 392.00,0.5,0.8
 440.00,0.5,1.0
 493.88,0.5,0.85
 523.25,0.5,0.75</textarea>
-        </div>
-        <div class="field" id="midi-input-wrap" style="display:none">
-          <label>note, dur, vel <span style="color:var(--muted)">— MIDI 0–127</span></label>
-          <textarea id="midi-input" spellcheck="false">60,0.5,100
+      </div>
+      <div class="field" id="midi-input-wrap" style="display:none">
+        <label>note, dur, vel — MIDI 0–127</label>
+        <textarea id="midi-input" spellcheck="false">60,0.5,100
 64,0.5,90
 67,0.5,110
 69,0.75,95
 72,1.0,127
 74,0.5,100
 76,0.5,85</textarea>
-        </div>
-      </div>
-
-      <!-- Group 2: Engine -->
-      <div class="ctrl-group">
-        <h2>engine</h2>
-        <div class="field">
-          <label>CA rule</label>
-          <select id="rule-sel">
-            <option value="78">78 — UQGVS stable</option>
-            <option value="110" selected>110 — Turing complete</option>
-            <option value="30">30 — chaotic</option>
-            <option value="90">90 — fractal (XOR)</option>
-            <option value="dynamic">dynamic — f(input)</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>generations <span class="val" id="gen-val">128</span></label>
-          <input type="range" id="gen-range" min="16" max="256" value="128" step="16">
-        </div>
-        <div class="field">
-          <label>CA width <span class="val" id="width-val">256</span></label>
-          <input type="range" id="width-range" min="64" max="512" value="256" step="64">
-        </div>
-        <div class="field">
-          <label>hologram size <span class="val" id="holo-val">128</span></label>
-          <input type="range" id="holo-range" min="64" max="256" value="128" step="32">
-        </div>
-        <div class="field">
-          <label>ref beam strength <span class="val" id="ref-val">0.30</span></label>
-          <input type="range" id="ref-range" min="0" max="1" value="0.3" step="0.01">
-        </div>
-      </div>
-
-      <!-- Group 3: Render -->
-      <div class="ctrl-group">
-        <h2>render</h2>
-        <div class="field">
-          <label>colormap</label>
-          <div class="cmap-row" id="cmap-row"></div>
-        </div>
-        <div class="field">
-          <label>brightness <span class="val" id="bright-val">1.00</span></label>
-          <input type="range" id="bright-range" min="0.3" max="3" value="1.0" step="0.05">
-        </div>
-        <div class="field">
-          <label>gamma <span class="val" id="gamma-val">1.00</span></label>
-          <input type="range" id="gamma-range" min="0.3" max="2.5" value="1.0" step="0.05">
-        </div>
-        <div class="field">
-          <label>ref beam pattern</label>
-          <select id="ref-pattern">
-            <option value="linear">linear  — sin(x·α + y·β)</option>
-            <option value="quat" selected>quaternion — modulated per row</option>
-            <option value="radial">radial — sin(√(x²+y²))</option>
-            <option value="spiral">spiral — sin(θ + r)</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>show ASCII</label>
-          <div class="seg" id="ascii-seg">
-            <button class="active" data-v="0">off</button>
-            <button data-v="1">on</button>
-          </div>
-        </div>
-        <div class="field">
-          <label>animation</label>
-          <div class="seg" id="anim-seg">
-            <button class="active" data-v="0">pause</button>
-            <button data-v="1">play ▶</button>
-          </div>
-        </div>
-        <div class="field">
-          <label>speed <span class="val" id="speed-val">1.0×</span></label>
-          <input type="range" id="speed-range" min="0.1" max="8" value="1" step="0.1">
-        </div>
-        <button class="run-btn" id="run-btn">run transmutation</button>
       </div>
     </div>
 
-    <div id="ascii-out"></div>
-  </main>
+    <!-- Group 2: Engine -->
+    <div class="ctrl-group">
+      <h2>engine</h2>
+      <div class="field">
+        <label>CA rule</label>
+        <select id="rule-sel">
+          <option value="78">78 — UQGVS stable</option>
+          <option value="110" selected>110 — Turing complete</option>
+          <option value="30">30 — chaotic</option>
+          <option value="90">90 — fractal (XOR)</option>
+          <option value="dynamic">dynamic — f(input)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>generations <span class="val" id="gen-val">128</span></label>
+        <input type="range" id="gen-range" min="16" max="256" value="128" step="16">
+      </div>
+      <div class="field">
+        <label>CA width <span class="val" id="width-val">256</span></label>
+        <input type="range" id="width-range" min="64" max="512" value="256" step="64">
+      </div>
+      <div class="field">
+        <label>hologram size <span class="val" id="holo-val">128</span></label>
+        <input type="range" id="holo-range" min="64" max="256" value="128" step="32">
+      </div>
+      <div class="field">
+        <label>ref beam strength <span class="val" id="ref-val">0.30</span></label>
+        <input type="range" id="ref-range" min="0" max="1" value="0.3" step="0.01">
+      </div>
+      <div class="field">
+        <label>ref beam pattern</label>
+        <select id="ref-pattern">
+          <option value="linear">linear</option>
+          <option value="quat" selected>quaternion modulated</option>
+          <option value="radial">radial</option>
+          <option value="spiral">spiral</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Group 3: Render + Anim -->
+    <div class="ctrl-group">
+      <h2>render</h2>
+      <div class="field">
+        <label>colormap</label>
+        <div class="cmap-row" id="cmap-row"></div>
+      </div>
+      <div class="field">
+        <label>brightness <span class="val" id="bright-val">1.00</span></label>
+        <input type="range" id="bright-range" min="0.3" max="3" value="1.0" step="0.05">
+      </div>
+      <div class="field">
+        <label>gamma <span class="val" id="gamma-val">1.00</span></label>
+        <input type="range" id="gamma-range" min="0.3" max="2.5" value="1.0" step="0.05">
+      </div>
+      <div class="field">
+        <label>animation</label>
+        <div class="seg" id="anim-seg">
+          <button data-v="0">pause</button>
+          <button class="active" data-v="1">play ▶</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>speed <span class="val" id="speed-val">1.0×</span></label>
+        <input type="range" id="speed-range" min="0.1" max="8" value="1" step="0.1">
+      </div>
+      <div class="field">
+        <label>ASCII output</label>
+        <div class="seg" id="ascii-seg">
+          <button class="active" data-v="0">off</button>
+          <button data-v="1">on</button>
+        </div>
+      </div>
+      <button class="run-btn" id="run-btn">⟳ rebuild</button>
+    </div>
+  </div>
 
   <footer>
     <div class="diag">notes <span id="d-notes">—</span></div>
     <div class="diag">rule <span id="d-rule">—</span></div>
-    <div class="diag">CA cells <span id="d-cells">—</span></div>
-    <div class="diag">quat[0].w <span id="d-w">—</span></div>
-    <div class="diag">quat[0].xyz <span id="d-xyz">—</span></div>
-    <div class="diag">holo peak <span id="d-peak">—</span></div>
-    <div class="diag">render <span id="d-time">—</span></div>
-    <div class="diag">fps <span id="d-fps">—</span></div>
+    <div class="diag">CA <span id="d-cells">—</span></div>
+    <div class="diag">q[0].w <span id="d-w">—</span></div>
+    <div class="diag">q[0].xyz <span id="d-xyz">—</span></div>
+    <div class="diag">peak <span id="d-peak">—</span></div>
     <div class="diag">frame <span id="d-frame">—</span></div>
+    <div class="diag">fps <span id="d-fps">—</span></div>
+    <div class="diag">ms <span id="d-time">—</span></div>
   </footer>
 
-</div>
+</div><!-- #app -->
 
 <script>
 // ─────────────────────────────────────────────────────────────────────────────
-// ANIMATION STATE
+// ANIM STATE
 // ─────────────────────────────────────────────────────────────────────────────
-let animPlaying  = false;
-let animFrame    = 0;       // current time offset (float, in CA rows)
-let animRAF      = null;
-let lastTS       = null;
-let fpsSmooth    = 0;
+let animPlaying = true;
+let animFrame   = 0;
+let animRAF     = null;
+let lastTS      = null;
+let fpsSmooth   = 0;
+let STATE       = null;
 
-// Pre-computed pipeline state (rebuilt on run())
-let STATE = null;           // { grid, quats, rule, caWidth, generations, holoSize, refStrength, refPattern, cmap, brightness, gamma }
+// ─────────────────────────────────────────────────────────────────────────────
+// CANVAS SIZING — match logical pixel dimensions to display pixels exactly
+// ─────────────────────────────────────────────────────────────────────────────
+function resizeCanvases() {
+  ['ca-canvas', 'holo-canvas'].forEach(id => {
+    const canvas = document.getElementById(id);
+    const rect   = canvas.getBoundingClientRect();
+    // Only update if size actually changed (avoids thrash)
+    if (canvas.width !== (rect.width | 0) || canvas.height !== (rect.height | 0)) {
+      canvas.width  = rect.width  | 0;
+      canvas.height = rect.height | 0;
+    }
+  });
+}
+
+window.addEventListener('resize', () => { resizeCanvases(); if (!animPlaying && STATE) draw(animFrame); });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COLORMAPS
 // ─────────────────────────────────────────────────────────────────────────────
 const CMAPS = {
-  cyan:   t => { const v = Math.min(255, t*255|0); return [0, v*0.7|0, v]; },
-  plasma: t => {
-    const r = Math.min(255, (0.05 + 1.1*t*t*t*2)*255|0);
-    const g = Math.min(255, (0.8*t - 0.1)*255|0);
-    const b = Math.min(255, (0.9 - 0.9*t)*255|0);
-    return [r<0?0:r, g<0?0:g, b<0?0:b];
-  },
-  thermal: t => {
-    const r = Math.min(255, t*2*255|0);
-    const g = Math.min(255, Math.max(0,(t*2-0.5)*255)|0);
-    const b = Math.min(255, Math.max(0,(t*2-1.0)*255)|0);
+  cyan:    t => { const v = t*255|0; return [0, (v*0.7)|0, v]; },
+  plasma:  t => {
+    const r = Math.min(255, Math.max(0, (0.05 + 2.2*t*t*t)*255)|0);
+    const g = Math.min(255, Math.max(0, (0.8*t - 0.1)*255)|0);
+    const b = Math.min(255, Math.max(0, (0.9 - 0.9*t)*255)|0);
     return [r,g,b];
   },
-  green:  t => { const v = Math.min(255, t*255|0); return [0, v, v*0.3|0]; },
-  mono:   t => { const v = Math.min(255, t*255|0); return [v,v,v]; },
-  amber:  t => { return [Math.min(255,t*255|0), Math.min(255,t*180|0), 0]; },
+  thermal: t => [Math.min(255,t*2*255|0), Math.min(255,Math.max(0,(t*2-.5)*255)|0), Math.min(255,Math.max(0,(t*2-1)*255)|0)],
+  green:   t => { const v = t*255|0; return [0, v, (v*0.3)|0]; },
+  mono:    t => { const v = t*255|0; return [v,v,v]; },
+  amber:   t => [Math.min(255,t*255|0), Math.min(255,t*180|0), 0],
 };
 const CMAP_NAMES = Object.keys(CMAPS);
-const CMAP_SWATCHES = {
-  cyan:    '#00a0c0',  plasma: '#9040c0',
-  thermal: '#c04020',  green:  '#00c040',
-  mono:    '#888',    amber:  '#c08000',
-};
+const CMAP_HEX   = { cyan:'#00a0c0', plasma:'#9040c0', thermal:'#c04020', green:'#00c040', mono:'#888', amber:'#c08000' };
 let activeCmap = 'cyan';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// STAGE 1 — note/MIDI → quaternion (normalized axis-angle)
+// STAGE 1 — note → quaternion
 // ─────────────────────────────────────────────────────────────────────────────
 function noteToQuat(freq, dur, amp) {
-  const nFreq = freq / 440.0;
-  const angle = 2 * Math.PI * nFreq * dur;
-  const ax = Math.sin(nFreq * Math.PI);
-  const ay = Math.cos(nFreq * Math.PI);
-  const az = amp;
-  const norm = Math.sqrt(ax*ax + ay*ay + az*az) || 1;
-  const sha = Math.sin(angle / 2);
-  return { w: Math.cos(angle/2), x: (ax/norm)*sha, y: (ay/norm)*sha, z: (az/norm)*sha };
+  const n = freq / 440.0;
+  const angle = 2 * Math.PI * n * dur;
+  const ax = Math.sin(n * Math.PI), ay = Math.cos(n * Math.PI), az = amp;
+  const nm = Math.sqrt(ax*ax + ay*ay + az*az) || 1;
+  const s  = Math.sin(angle / 2);
+  return { w: Math.cos(angle/2), x:(ax/nm)*s, y:(ay/nm)*s, z:(az/nm)*s };
 }
-
 function midiToQuat(note, dur, vel) {
-  const n = note / 127.0;
-  const v = vel / 127.0;
-  const theta = 2 * Math.PI * n * dur;
-  const sha = Math.sin(theta / 2);
-  const ax = Math.sin(n * Math.PI);
-  const ay = Math.cos(n * Math.PI);
-  const az = v;
-  const norm = Math.sqrt(ax*ax + ay*ay + az*az) || 1;
-  return { w: Math.cos(theta/2), x: (ax/norm)*sha, y: (ay/norm)*sha, z: (az/norm)*sha };
+  const n = note/127, v = vel/127;
+  const theta = 2*Math.PI*n*dur, s = Math.sin(theta/2);
+  const ax=Math.sin(n*Math.PI), ay=Math.cos(n*Math.PI), az=v;
+  const nm=Math.sqrt(ax*ax+ay*ay+az*az)||1;
+  return { w:Math.cos(theta/2), x:(ax/nm)*s, y:(ay/nm)*s, z:(az/nm)*s };
 }
-
-function parseFreqInput(text) {
-  return text.trim().split('\n').map(l => {
-    const p = l.split(',').map(Number);
-    if (p.length < 3 || p.some(isNaN)) return null;
-    return noteToQuat(p[0], p[1], p[2]);
-  }).filter(Boolean);
+function parseFreq(txt) {
+  return txt.trim().split('\n').map(l => { const p=l.split(',').map(Number); return p.length>=3&&!p.some(isNaN)?noteToQuat(p[0],p[1],p[2]):null; }).filter(Boolean);
 }
-
-function parseMidiInput(text) {
-  return text.trim().split('\n').map(l => {
-    const p = l.split(',').map(Number);
-    if (p.length < 3 || p.some(isNaN)) return null;
-    return midiToQuat(p[0], p[1], p[2]);
-  }).filter(Boolean);
+function parseMidi(txt) {
+  return txt.trim().split('\n').map(l => { const p=l.split(',').map(Number); return p.length>=3&&!p.some(isNaN)?midiToQuat(p[0],p[1],p[2]):null; }).filter(Boolean);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// STAGE 2 — quaternions → CA seed → evolve
+// STAGE 2 — CA
 // ─────────────────────────────────────────────────────────────────────────────
-function buildCASeed(quats, caWidth) {
-  const cells = new Uint8Array(caWidth);
-  for (let i = 0; i < quats.length && (i * 4 + 3) < caWidth; i++) {
-    const q = quats[i];
-    cells[i*4+0] = ((q.w + 1) * 127.5) | 0;
-    cells[i*4+1] = ((q.x + 1) * 127.5) | 0;
-    cells[i*4+2] = ((q.y + 1) * 127.5) | 0;
-    cells[i*4+3] = ((q.z + 1) * 127.5) | 0;
+function buildSeed(quats, W) {
+  const c = new Uint8Array(W);
+  for (let i=0; i<quats.length && i*4+3<W; i++) {
+    const q=quats[i];
+    c[i*4]  = ((q.w+1)*127.5)|0;
+    c[i*4+1]= ((q.x+1)*127.5)|0;
+    c[i*4+2]= ((q.y+1)*127.5)|0;
+    c[i*4+3]= ((q.z+1)*127.5)|0;
   }
-  return cells;
+  return c;
 }
-
-function caStep(prev, caWidth, rule) {
-  const next = new Uint8Array(caWidth);
-  for (let i = 0; i < caWidth; i++) {
-    const n = ((prev[(i - 1 + caWidth) % caWidth] > 127) << 2) |
-              ((prev[i] > 127) << 1) |
-               (prev[(i + 1) % caWidth] > 127);
-    next[i] = ((rule >> n) & 1) ? 255 : 0;
+function caStep(prev, W, rule) {
+  const next = new Uint8Array(W);
+  for (let i=0;i<W;i++) {
+    const n = ((prev[(i-1+W)%W]>127)<<2)|((prev[i]>127)<<1)|(prev[(i+1)%W]>127);
+    next[i] = ((rule>>n)&1) ? 255 : 0;
   }
   return next;
 }
-
-function evolveCA(quats, caWidth, generations, ruleSetting) {
-  const rule = ruleSetting === 'dynamic'
-    ? (quats.length * 31) % 256
-    : parseInt(ruleSetting, 10);
-
-  const grid = new Uint8Array(generations * caWidth);
-  const seed = buildCASeed(quats, caWidth);
-  grid.set(seed, 0);
-
-  for (let g = 1; g < generations; g++) {
-    const prev = grid.subarray((g-1)*caWidth, g*caWidth);
-    const curr = caStep(prev, caWidth, rule);
-    grid.set(curr, g * caWidth);
+function evolveCA(quats, W, G, ruleSetting) {
+  const rule = ruleSetting==='dynamic' ? (quats.length*31)%256 : parseInt(ruleSetting,10);
+  const grid = new Uint8Array(G*W);
+  grid.set(buildSeed(quats,W), 0);
+  for (let g=1;g<G;g++) {
+    grid.set(caStep(grid.subarray((g-1)*W,g*W), W, rule), g*W);
   }
   return { grid, rule };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// STAGE 3 — holographic interference
+// STAGE 3 — hologram (with time offset)
 // ─────────────────────────────────────────────────────────────────────────────
-// timeOffset: float row index — animates by scrolling the CA window + phase-shifting ref beam
-function buildHologram(grid, quats, caWidth, generations, holoSize, refStrength, refPattern, timeOffset) {
-  const intensity = new Float32Array(holoSize * holoSize);
-  const tOff = timeOffset || 0;
-  const phase = (tOff / generations) * Math.PI * 2; // full phase cycle = one CA period
-
-  for (let y = 0; y < holoSize; y++) {
-    // Scroll: shift which CA row we read from
-    const caY = (((y + tOff) | 0) % generations + generations) % generations;
-    const qLens = quats[caY % quats.length];
-
-    for (let x = 0; x < holoSize; x++) {
-      const caX = x % caWidth;
-      const obj = grid[caY * caWidth + caX] / 255.0;
-
+function buildHologram(grid, quats, W, G, H, refStr, refPat, tOff) {
+  const intensity = new Float32Array(H*H);
+  const phase = (tOff/G) * Math.PI * 2;
+  for (let y=0;y<H;y++) {
+    const caY = (((y + (tOff|0)) % G) + G) % G;
+    const q   = quats[caY % quats.length];
+    for (let x=0;x<H;x++) {
+      const obj = grid[caY*W + (x%W)] / 255.0;
       let ref;
-      if (refPattern === 'linear') {
-        ref = Math.sin(x * 0.3 + y * 0.1 + phase) * refStrength;
-      } else if (refPattern === 'quat') {
-        ref = Math.sin(x * qLens.x + y * qLens.y + qLens.z + phase) * refStrength;
-      } else if (refPattern === 'radial') {
-        const cx = x - holoSize/2, cy = y - holoSize/2;
-        ref = Math.sin(Math.sqrt(cx*cx + cy*cy) * 0.25 - phase) * refStrength;
-      } else { // spiral
-        const cx = x - holoSize/2, cy = y - holoSize/2;
-        const r = Math.sqrt(cx*cx + cy*cy) * 0.15;
-        const th = Math.atan2(cy, cx);
-        ref = Math.sin(th + r - phase) * refStrength;
-      }
-
-      let v = Math.pow(ref + obj, 2) * 0.25;
-      intensity[y * holoSize + x] = v < 0 ? 0 : (v > 1 ? 1 : v);
+      if      (refPat==='linear')  ref = Math.sin(x*0.3 + y*0.1 + phase) * refStr;
+      else if (refPat==='quat')    ref = Math.sin(x*q.x + y*q.y + q.z + phase) * refStr;
+      else if (refPat==='radial') { const cx=x-H/2,cy=y-H/2; ref = Math.sin(Math.sqrt(cx*cx+cy*cy)*0.25 - phase)*refStr; }
+      else                         { const cx=x-H/2,cy=y-H/2; ref = Math.sin(Math.atan2(cy,cx)+Math.sqrt(cx*cx+cy*cy)*0.15 - phase)*refStr; }
+      const v = (ref+obj)*(ref+obj)*0.25;
+      intensity[y*H+x] = v<0?0:v>1?1:v;
     }
   }
   return intensity;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// RENDER to canvas
+// RENDER
 // ─────────────────────────────────────────────────────────────────────────────
-function renderHoloCanvas(canvas, intensity, holoSize, cmap, brightness, gamma) {
-  canvas.width = holoSize;
-  canvas.height = holoSize;
-  const ctx = canvas.getContext('2d');
-  const img = ctx.createImageData(holoSize, holoSize);
-  const d = img.data;
-  let peak = 0;
-  for (let i = 0; i < intensity.length; i++) {
-    const v = intensity[i] * brightness;
-    const t = Math.min(1, Math.pow(v, 1/gamma));
-    if (t > peak) peak = t;
-    const [r,g,b] = cmap(t);
-    d[i*4]=r; d[i*4+1]=g; d[i*4+2]=b; d[i*4+3]=255;
+function renderCA(canvas, grid, W, G, cmap, brightness, gamma, tOff) {
+  const cw=canvas.width, ch=canvas.height;
+  if (!cw||!ch) return;
+  const ctx=canvas.getContext('2d');
+  const img=ctx.createImageData(cw,ch);
+  const d=img.data;
+  for (let py=0;py<ch;py++) {
+    const srcRow = (((((py/ch*G)|0) + (tOff|0)) % G) + G) % G;
+    const fade   = 0.35 + 0.65*(py/ch);
+    for (let px=0;px<cw;px++) {
+      const raw = grid[srcRow*W + ((px/cw*W)|0)] / 255.0 * brightness * fade;
+      const t   = Math.min(1, Math.pow(Math.max(0,raw), 1/gamma));
+      const [r,g,b] = cmap(t);
+      const i=(py*cw+px)*4; d[i]=r;d[i+1]=g;d[i+2]=b;d[i+3]=255;
+    }
   }
-  ctx.putImageData(img, 0, 0);
+  ctx.putImageData(img,0,0);
+  // "now" scanline
+  ctx.strokeStyle='rgba(62,207,207,0.5)';
+  ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(0,ch-1); ctx.lineTo(cw,ch-1); ctx.stroke();
+}
+
+function renderHolo(canvas, intensity, H, cmap, brightness, gamma) {
+  const cw=canvas.width, ch=canvas.height;
+  if (!cw||!ch) return;
+  const ctx=canvas.getContext('2d');
+  const img=ctx.createImageData(cw,ch);
+  const d=img.data;
+  let peak=0;
+  for (let py=0;py<ch;py++) {
+    const sy=(py/ch*H)|0;
+    for (let px=0;px<cw;px++) {
+      const v = intensity[sy*H + ((px/cw*H)|0)] * brightness;
+      const t = Math.min(1, Math.pow(Math.max(0,v), 1/gamma));
+      if (t>peak) peak=t;
+      const [r,g,b]=cmap(t);
+      const i=(py*cw+px)*4; d[i]=r;d[i+1]=g;d[i+2]=b;d[i+3]=255;
+    }
+  }
+  ctx.putImageData(img,0,0);
   return peak;
 }
 
-// Render CA as a scrolling window: rows are shown with timeOffset determining which
-// row is at the top — gives a "tape scrolling through a window" effect.
-function renderCACanvas(canvas, grid, caWidth, generations, cmap, brightness, gamma, timeOffset) {
-  canvas.width = caWidth;
-  canvas.height = generations;
-  const ctx = canvas.getContext('2d');
-  const img = ctx.createImageData(caWidth, generations);
-  const d = img.data;
-  const tOff = (timeOffset || 0) | 0;
-  for (let y = 0; y < generations; y++) {
-    const srcRow = ((y + tOff) % generations + generations) % generations;
-    for (let x = 0; x < caWidth; x++) {
-      const raw = grid[srcRow * caWidth + x] / 255.0 * brightness;
-      // Fade the "oldest" rows (top) slightly so the scroll reads as forward motion
-      const ageFade = 0.4 + 0.6 * (y / generations);
-      const t = Math.min(1, Math.pow(raw * ageFade, 1/gamma));
-      const [r,g,b] = cmap(t);
-      const i = (y * caWidth + x) * 4;
-      d[i]=r; d[i+1]=g; d[i+2]=b; d[i+3]=255;
-    }
-  }
-  ctx.putImageData(img, 0, 0);
-
-  // Draw a bright "now" line at the bottom — marks the live generation frontier
-  ctx.strokeStyle = 'rgba(62,207,207,0.6)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(0, generations - 1);
-  ctx.lineTo(caWidth, generations - 1);
-  ctx.stroke();
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
-// ASCII output (Stage 4 — faithful to C source)
+// ASCII
 // ─────────────────────────────────────────────────────────────────────────────
-const ASCII_RAMP = ' .:-=+*#%@';
-function buildASCII(intensity, holoSize) {
-  let out = '';
-  for (let y = 0; y < holoSize; y += 2) {
-    for (let x = 0; x < holoSize; x++) {
-      const idx = Math.min(9, Math.max(0, (intensity[y * holoSize + x] * 9) | 0));
-      out += ASCII_RAMP[idx];
-    }
-    out += '\n';
+const RAMP = ' .:-=+*#%@';
+function buildASCII(intensity, H) {
+  let out='';
+  for (let y=0;y<H;y+=2) {
+    for (let x=0;x<H;x++) out+=RAMP[Math.min(9,Math.max(0,(intensity[y*H+x]*9)|0))];
+    out+='\n';
   }
   return out;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PIPELINE — rebuild static data (stages 1+2), called on input/param changes
+// PIPELINE
 // ─────────────────────────────────────────────────────────────────────────────
+function readParams() {
+  return {
+    mode:       document.querySelector('#mode-seg .active').dataset.mode,
+    ruleSetting:document.getElementById('rule-sel').value,
+    G:          parseInt(document.getElementById('gen-range').value),
+    W:          parseInt(document.getElementById('width-range').value),
+    H:          parseInt(document.getElementById('holo-range').value),
+    refStr:     parseFloat(document.getElementById('ref-range').value),
+    brightness: parseFloat(document.getElementById('bright-range').value),
+    gamma:      parseFloat(document.getElementById('gamma-range').value),
+    refPat:     document.getElementById('ref-pattern').value,
+    speed:      parseFloat(document.getElementById('speed-range').value),
+    showASCII:  document.querySelector('#ascii-seg .active').dataset.v==='1',
+    cmap:       CMAPS[activeCmap],
+  };
+}
+
 function rebuild() {
-  const mode       = document.querySelector('#mode-seg .active').dataset.mode;
-  const inputText  = mode === 'freq'
+  setStage('1 — quaternion');
+  const p = readParams();
+  const txt = p.mode==='freq'
     ? document.getElementById('freq-input').value
     : document.getElementById('midi-input').value;
+  const quats = p.mode==='freq' ? parseFreq(txt) : parseMidi(txt);
+  if (!quats.length) { alert('No valid notes.'); return false; }
 
-  const quats = mode === 'freq' ? parseFreqInput(inputText) : parseMidiInput(inputText);
-  if (!quats.length) { alert('No valid notes parsed.'); return false; }
-
-  const ruleSetting = document.getElementById('rule-sel').value;
-  const generations = parseInt(document.getElementById('gen-range').value);
-  const caWidth     = parseInt(document.getElementById('width-range').value);
-  const holoSize    = parseInt(document.getElementById('holo-range').value);
-  const refStrength = parseFloat(document.getElementById('ref-range').value);
-  const brightness  = parseFloat(document.getElementById('bright-range').value);
-  const gamma       = parseFloat(document.getElementById('gamma-range').value);
-  const refPattern  = document.getElementById('ref-pattern').value;
-  const cmap        = CMAPS[activeCmap];
-
-  setStage('2 — CA evolution');
-  const { grid, rule } = evolveCA(quats, caWidth, generations, ruleSetting);
-
-  STATE = { grid, quats, rule, caWidth, generations, holoSize, refStrength, refPattern, cmap, brightness, gamma };
+  setStage('2 — CA');
+  const { grid, rule } = evolveCA(quats, p.W, p.G, p.ruleSetting);
+  STATE = { ...p, quats, grid, rule };
 
   document.getElementById('ca-rule-tag').textContent = `rule ${rule}`;
-  document.getElementById('holo-tag').textContent    = `${holoSize}×${holoSize}`;
-  document.getElementById('d-notes').textContent     = quats.length;
-  document.getElementById('d-rule').textContent      = rule;
-  document.getElementById('d-cells').textContent     = `${caWidth}×${generations}`;
-  document.getElementById('d-w').textContent         = quats[0].w.toFixed(4);
-  document.getElementById('d-xyz').textContent       = `(${quats[0].x.toFixed(3)}, ${quats[0].y.toFixed(3)}, ${quats[0].z.toFixed(3)})`;
-
+  document.getElementById('holo-tag').textContent     = `${p.H}×${p.H}`;
+  document.getElementById('d-notes').textContent      = quats.length;
+  document.getElementById('d-rule').textContent       = rule;
+  document.getElementById('d-cells').textContent      = `${p.W}×${p.G}`;
+  document.getElementById('d-w').textContent          = quats[0].w.toFixed(4);
+  document.getElementById('d-xyz').textContent        = `(${quats[0].x.toFixed(3)},${quats[0].y.toFixed(3)},${quats[0].z.toFixed(3)})`;
   return true;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// DRAW — one frame at a given timeOffset (stages 3+4), called every rAF tick
-// ─────────────────────────────────────────────────────────────────────────────
-function draw(timeOffset) {
+function draw(tOff) {
   if (!STATE) return;
-  const { grid, quats, caWidth, generations, holoSize, refStrength, refPattern, cmap, brightness, gamma } = STATE;
+  const { grid, quats, W, G, H, refStr, refPat, cmap, brightness, gamma, showASCII } = STATE;
   const t0 = performance.now();
 
   setStage('3 — hologram');
-  const intensity = buildHologram(grid, quats, caWidth, generations, holoSize, refStrength, refPattern, timeOffset);
+  const intensity = buildHologram(grid, quats, W, G, H, refStr, refPat, tOff);
 
   setStage('4 — render');
-  renderCACanvas(document.getElementById('ca-canvas'), grid, caWidth, generations, cmap, brightness, gamma, timeOffset);
+  renderCA(document.getElementById('ca-canvas'), grid, W, G, cmap, brightness, gamma, tOff);
+  const peak = renderHolo(document.getElementById('holo-canvas'), intensity, H, cmap, brightness, gamma);
 
-  const peak = renderHoloCanvas(document.getElementById('holo-canvas'), intensity, holoSize, cmap, brightness, gamma);
-
-  const showASCII = document.querySelector('#ascii-seg .active').dataset.v === '1';
+  const asciiEl = document.getElementById('ascii-out');
   if (showASCII) {
-    document.getElementById('ascii-out').style.display = 'block';
-    document.getElementById('ascii-out').textContent = buildASCII(intensity, holoSize);
+    asciiEl.style.display = 'block';
+    // Only update ASCII every ~10 frames (expensive string build)
+    if (!draw._asciiTick || (draw._asciiTick++ % 10 === 0)) {
+      asciiEl.textContent = buildASCII(intensity, H);
+    }
   } else {
-    document.getElementById('ascii-out').style.display = 'none';
+    asciiEl.style.display = 'none';
+    draw._asciiTick = 0;
   }
 
-  document.getElementById('d-peak').textContent  = peak.toFixed(4);
-  document.getElementById('d-time').textContent  = `${(performance.now()-t0).toFixed(1)}ms`;
-  document.getElementById('d-frame').textContent = (timeOffset | 0);
-  setStage(animPlaying ? '▶ animating' : 'paused');
+  document.getElementById('d-peak').textContent  = peak ? peak.toFixed(4) : '—';
+  document.getElementById('d-time').textContent  = `${(performance.now()-t0).toFixed(1)}`;
+  document.getElementById('d-frame').textContent = tOff|0;
+  setStage(animPlaying ? '▶' : 'paused');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ANIMATION LOOP
+// ANIM LOOP
 // ─────────────────────────────────────────────────────────────────────────────
 function animLoop(ts) {
   if (!animPlaying) return;
   if (lastTS !== null) {
     const dt    = ts - lastTS;
-    const speed = parseFloat(document.getElementById('speed-range').value);
-    // Advance animFrame: speed=1 → ~30 CA rows/sec feels good
-    animFrame = (animFrame + (dt / 1000) * speed * 30) % (STATE ? STATE.generations : 128);
-
-    // FPS smoothed
-    const rawFps = 1000 / dt;
-    fpsSmooth = fpsSmooth * 0.85 + rawFps * 0.15;
+    const speed = STATE?.speed ?? 1;
+    animFrame = (animFrame + (dt/1000)*speed*30) % (STATE ? STATE.G : 128);
+    const fps = 1000/dt;
+    fpsSmooth = fpsSmooth*0.85 + fps*0.15;
     document.getElementById('d-fps').textContent = fpsSmooth.toFixed(1);
   }
   lastTS = ts;
+  resizeCanvases();
   draw(animFrame);
   animRAF = requestAnimationFrame(animLoop);
 }
 
 function startAnim() {
   if (animPlaying) return;
-  animPlaying = true;
-  lastTS = null;
-  animRAF = requestAnimationFrame(animLoop);
+  animPlaying=true; lastTS=null;
+  animRAF=requestAnimationFrame(animLoop);
 }
-
 function stopAnim() {
-  animPlaying = false;
-  if (animRAF) { cancelAnimationFrame(animRAF); animRAF = null; }
-  document.getElementById('d-fps').textContent = '—';
+  animPlaying=false;
+  if (animRAF) { cancelAnimationFrame(animRAF); animRAF=null; }
+  document.getElementById('d-fps').textContent='—';
   setStage('paused');
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// run = rebuild pipeline + draw frame 0 (or let anim pick it up)
-// ─────────────────────────────────────────────────────────────────────────────
 function run() {
   setStage('1 — quaternion');
   if (!rebuild()) return;
-  if (!animPlaying) { animFrame = 0; draw(0); }
+  if (!animPlaying) { animFrame=0; resizeCanvases(); draw(0); }
 }
-
-function setStage(s) {
-  document.getElementById('cur-stage').textContent = s;
-}
+function setStage(s) { document.getElementById('cur-stage').textContent=s; }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // UI WIRING
@@ -604,123 +602,65 @@ function setStage(s) {
 const cmapRow = document.getElementById('cmap-row');
 CMAP_NAMES.forEach(name => {
   const sw = document.createElement('div');
-  sw.className = 'sw' + (name === activeCmap ? ' active' : '');
-  sw.style.background = CMAP_SWATCHES[name];
+  sw.className = 'sw' + (name===activeCmap?' active':'');
+  sw.style.background = CMAP_HEX[name];
   sw.title = name;
   sw.addEventListener('click', () => {
     activeCmap = name;
-    cmapRow.querySelectorAll('.sw').forEach(s => s.classList.remove('active'));
+    cmapRow.querySelectorAll('.sw').forEach(s=>s.classList.remove('active'));
     sw.classList.add('active');
-    if (STATE) STATE.cmap = CMAPS[activeCmap];
-    if (!animPlaying) draw(animFrame);
+    if (STATE) { STATE.cmap=CMAPS[name]; if (!animPlaying) draw(animFrame); }
   });
   cmapRow.appendChild(sw);
 });
 
-// Segmented controls
+// Segmented buttons
 document.querySelectorAll('.seg').forEach(seg => {
   seg.querySelectorAll('button').forEach(btn => {
     btn.addEventListener('click', () => {
-      seg.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+      seg.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
       btn.classList.add('active');
-
-      if (seg.id === 'mode-seg') {
-        document.getElementById('freq-input-wrap').style.display = btn.dataset.mode === 'freq' ? '' : 'none';
-        document.getElementById('midi-input-wrap').style.display = btn.dataset.mode === 'midi' ? '' : 'none';
+      if (seg.id==='mode-seg') {
+        document.getElementById('freq-input-wrap').style.display = btn.dataset.mode==='freq'?'':'none';
+        document.getElementById('midi-input-wrap').style.display = btn.dataset.mode==='midi'?'':'none';
         run();
-      } else if (seg.id === 'anim-seg') {
-        if (btn.dataset.v === '1') { if (STATE) startAnim(); }
-        else stopAnim();
-      } else {
-        if (!animPlaying) draw(animFrame);
+      } else if (seg.id==='anim-seg') {
+        btn.dataset.v==='1' ? (STATE && startAnim()) : stopAnim();
+      } else if (seg.id==='ascii-seg') {
+        if (STATE) { STATE.showASCII = btn.dataset.v==='1'; if (!animPlaying) draw(animFrame); }
       }
     });
   });
 });
 
-// Range display + rebuild or live redraw
-function bindRange(id, display, fmt, needsRebuild) {
-  const el = document.getElementById(id);
-  const disp = document.getElementById(display);
-  el.addEventListener('input', () => {
-    disp.textContent = fmt(el.value);
-    if (needsRebuild) { run(); }
-    else {
-      if (STATE) {
-        STATE.brightness  = parseFloat(document.getElementById('bright-range').value);
-        STATE.gamma       = parseFloat(document.getElementById('gamma-range').value);
-        STATE.refStrength = parseFloat(document.getElementById('ref-range').value);
-      }
-      if (!animPlaying) draw(animFrame);
-    }
-  });
+// Ranges
+function bindRange(id, dispId, fmt, onchange) {
+  const el=document.getElementById(id), disp=document.getElementById(dispId);
+  el.addEventListener('input', () => { disp.textContent=fmt(el.value); onchange(el.value); });
 }
-bindRange('gen-range',    'gen-val',    v => v,                          true);
-bindRange('width-range',  'width-val',  v => v,                          true);
-bindRange('holo-range',   'holo-val',   v => v,                          true);
-bindRange('ref-range',    'ref-val',    v => parseFloat(v).toFixed(2),   false);
-bindRange('bright-range', 'bright-val', v => parseFloat(v).toFixed(2),   false);
-bindRange('gamma-range',  'gamma-val',  v => parseFloat(v).toFixed(2),   false);
-bindRange('speed-range',  'speed-val',  v => parseFloat(v).toFixed(1)+'×', false);
+bindRange('gen-range',    'gen-val',    v=>v,                           ()=>run());
+bindRange('width-range',  'width-val',  v=>v,                           ()=>run());
+bindRange('holo-range',   'holo-val',   v=>v,                           ()=>run());
+bindRange('ref-range',    'ref-val',    v=>parseFloat(v).toFixed(2),    v=>{ if(STATE){STATE.refStr=parseFloat(v);      if(!animPlaying)draw(animFrame);} });
+bindRange('bright-range', 'bright-val', v=>parseFloat(v).toFixed(2),    v=>{ if(STATE){STATE.brightness=parseFloat(v); if(!animPlaying)draw(animFrame);} });
+bindRange('gamma-range',  'gamma-val',  v=>parseFloat(v).toFixed(2),    v=>{ if(STATE){STATE.gamma=parseFloat(v);      if(!animPlaying)draw(animFrame);} });
+bindRange('speed-range',  'speed-val',  v=>parseFloat(v).toFixed(1)+'×',v=>{ if(STATE) STATE.speed=parseFloat(v); });
 
 document.getElementById('rule-sel').addEventListener('change', run);
 document.getElementById('ref-pattern').addEventListener('change', () => {
-  if (STATE) STATE.refPattern = document.getElementById('ref-pattern').value;
-  if (!animPlaying) draw(animFrame);
+  if (STATE) { STATE.refPat=document.getElementById('ref-pattern').value; if(!animPlaying)draw(animFrame); }
 });
 document.getElementById('run-btn').addEventListener('click', run);
 
-['freq-input', 'midi-input'].forEach(id => {
+['freq-input','midi-input'].forEach(id => {
   document.getElementById(id).addEventListener('keydown', e => {
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); run(); }
+    if (e.key==='Enter'&&(e.ctrlKey||e.metaKey)) { e.preventDefault(); run(); }
   });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// DOWNLOADS
-// ─────────────────────────────────────────────────────────────────────────────
-function downloadCanvas(canvas, filename) {
-  // Snapshot at current frame — pause briefly if playing so we get a clean frame
-  const wasPlaying = animPlaying;
-  if (wasPlaying) stopAnim();
-  draw(animFrame); // ensure latest frame is painted
-
-  canvas.toBlob(blob => {
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(a.href);
-    if (wasPlaying) startAnim();
-  }, 'image/png');
-}
-
-function downloadPage() {
-  const html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
-  const blob = new Blob([html], { type: 'text/html' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'TransmutationEngine.html';
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
-
-document.getElementById('dl-ca').addEventListener('click', () =>
-  downloadCanvas(document.getElementById('ca-canvas'),
-    `te_ca_rule${STATE?.rule ?? 'x'}_f${animFrame|0}.png`));
-
-document.getElementById('dl-holo').addEventListener('click', () =>
-  downloadCanvas(document.getElementById('holo-canvas'),
-    `te_holo_${STATE?.refPattern ?? 'x'}_f${animFrame|0}.png`));
-
-document.getElementById('dl-html').addEventListener('click', downloadPage);
-
-// Initial render then auto-play
+// Boot
 run();
-// Small delay so first frame paints before loop starts
-setTimeout(() => {
-  document.querySelector('#anim-seg button[data-v="1"]').click();
-}, 120);
+setTimeout(() => startAnim(), 100);
 </script>
 </body>
 </html>
